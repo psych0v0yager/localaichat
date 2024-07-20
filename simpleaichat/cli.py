@@ -5,7 +5,7 @@ from getpass import getpass
 import fire
 from dotenv import load_dotenv
 
-from .simpleaichat import AIChat
+from .localaichat import AIChat
 
 load_dotenv()
 
