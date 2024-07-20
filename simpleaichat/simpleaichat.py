@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from rich.console import Console
 
 from .chatgpt import ChatGPTSession
+from .vllm import vLLMSession
 from .models import ChatMessage, ChatSession
 from .utils import wikipedia_search_lookup
 
@@ -26,6 +27,7 @@ class AIChat(BaseModel):
 
     def __init__(
         self,
+        client_type: str = "OpenAI",
         character: str = None,
         character_command: str = None,
         system: str = None,
@@ -35,6 +37,9 @@ class AIChat(BaseModel):
         console: bool = True,
         **kwargs,
     ):
+        
+        self.client_type = client_type
+
         client = Client(proxies=os.getenv("https_proxy"))
         system_format = self.build_system(character, character_command, system)
 
@@ -52,20 +57,29 @@ class AIChat(BaseModel):
             client=client, default_session=new_default_session, sessions=sessions
         )
 
-        if not system and console:
-            character = "ChatGPT" if not character else character
-            new_default_session.title = character
-            self.interactive_console(character=character, prime=prime)
-
+        if self.client_type == "OpenAI":
+            if not system and console:
+                character = "ChatGPT" if not character else character
+                new_default_session.title = character
+                self.interactive_console(character=character, prime=prime)
+        elif self.client_type == "vLLM":
+            if not system and console:
+                character = "LLM" if not character else character
+                new_default_session.title = character
+                self.interactive_console(character=character, prime=prime)
+        else:
+            raise ValueError("Unsupported backend. Be sure to pass either 'OpenAI' or 'vLLM'")
+    
     def new_session(
         self,
         return_session: bool = False,
         **kwargs,
     ) -> Optional[ChatGPTSession]:
-        if "model" not in kwargs:  # set default
-            kwargs["model"] = "gpt-3.5-turbo"
-        # TODO: Add support for more models (PaLM, Claude)
-        if "gpt-" in kwargs["model"]:
+        
+        # Build openai session
+        if self.client_type == "OpenAI":
+            if "model" not in kwargs:  # set default
+                kwargs["model"] = "gpt-4o-mini"
             gpt_api_key = kwargs.get("api_key") or os.getenv("OPENAI_API_KEY")
             assert gpt_api_key, f"An API key for {kwargs['model'] } was not defined."
             sess = ChatGPTSession(
@@ -74,6 +88,13 @@ class AIChat(BaseModel):
                 },
                 **kwargs,
             )
+        # Build vLLM session
+        elif self.client_type == "vLLM":
+            sess = vLLMSession(
+                **kwargs,
+            )
+        else:
+            raise ValueError("Unsupported backend. Be sure to pass either 'OpenAI' or 'vLLM'")
 
         if return_session:
             return sess
