@@ -1,1 +1,1 @@
-from .simpleaichat import AIChat, AsyncAIChat
+from .localaichat import AIChat, AsyncAIChat

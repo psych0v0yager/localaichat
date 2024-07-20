@@ -1,7 +1,7 @@
 import uuid
 import time
 import argparse
-from simpleaichat import AIChat
+from localaichat import AIChat
 
 SYSTEM_DEFAULT = "Write a short single line that continues the line."
 
