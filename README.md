@@ -7,8 +7,13 @@ ai = AIChat(client_type="vLLM", model="Meta-Llama-3-8B-Instruct", system="Write 
 ai("simpleaichat")
 ```
 
-simpleaichat is a Python package for easily interfacing with chat apps like ChatGPT and GPT-4 with robust features and minimal code complexity. This tool has many features optimized for working with ChatGPT as fast and as cheap as possible, but still much more capable of modern AI tricks than most implementations:
+Credits to Max Woolf ([@minimaxir](https://minimaxir.com)) for the original simpleaichat found here [simpleaichat](https://github.com/minimaxir/simpleaichat)
 
+
+Like the original simpleaichat, simpleaichat v2 is designed to work with chat models with minimal abstractions. The difference with this Agent Framework is local models are priotitized as first class citizens. All features and internal prompts within this repo are designed to work primarily with local models hosted on the blazing fast vLLM backend. 
+
+- The ability to use local models via the vLLM backend
+- The ability to switch between vLLM and OpenAI to leverage the advantages of closed and open models
 - Create and run chats with only a few lines of code!
 - Optimized workflows which minimize the amount of tokens used, reducing costs and latency.
 - Run multiple independent chats at once.
@@ -16,7 +21,6 @@ simpleaichat is a Python package for easily interfacing with chat apps like Chat
 - Chat streaming responses and the ability to use tools.
 - Async support, including for streaming and tools.
 - Ability to create more complex yet clear workflows if needed, such as Agents. (Demo soon!)
-- Coming soon: more chat model support (PaLM, Claude)!
 
 Here's some fun, hackable examples on how simpleaichat works:
 
@@ -27,6 +31,7 @@ Here's some fun, hackable examples on how simpleaichat works:
 
 ## Installation
 
+(I'll need to update this)
 simpleaichat can be installed [from PyPI](https://pypi.org/project/simpleaichat/):
 
 ```sh
@@ -35,7 +40,23 @@ pip3 install simpleaichat
 
 ## Quick, Fun Demo
 
-You can demo chat-apps very quickly with simpleaichat! First, you will need to get an OpenAI API key, and then with one line of code:
+For local models you can get started in 2 steps
+
+Step 1: Start your vLLM server in your vLLM environment
+
+```
+python -m vllm.entrypoints.openai.api_server --model NousResearch/Meta-Llama-3-8B-Instruct --dtype auto --api-key token-abc123
+```
+
+Step 2: Begin your chat with one line of code:
+
+```py3
+from simpleaichat import AIChat
+
+AIChat(client_type="vLLM", model="Meta-Llama-3-8B-Instruct")
+```
+
+For OpneAI you will need to get an OpenAI API key, and then with one line of code:
 
 ```py3
 from simpleaichat import AIChat
