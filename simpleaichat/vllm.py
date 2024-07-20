@@ -73,8 +73,6 @@ class vLLMSession(ChatSession):
             schemas["output"] = output_schema.schema()
         return schemas
     
-
-
     def gen(
         self,
         prompt: str,
@@ -120,3 +118,45 @@ class vLLMSession(ChatSession):
             raise KeyError(f"No AI generation: {r}")
 
         return content
+    
+    def stream(
+        self,
+        prompt: str,
+        client: Union[Client, AsyncClient],
+        system: str = None,
+        save_messages: bool = None,
+        params: Dict[str, Any] = None,
+        input_schema: Any = None,
+        output_schema: Any = None,
+    ):
+        headers, data, user_message = self.prepare_request(
+            prompt, system, params, True, input_schema, output_schema
+        )
+
+        with client.stream(
+            "POST",
+            str(self.api_url),
+            json=data,
+            headers=headers,
+            timeout=None,
+        ) as r:
+            content = []
+            for chunk in r.iter_lines():
+                if len(chunk) > 0:
+                    chunk = chunk[6:]  # SSE JSON chunks are prepended with "data: "
+                    if chunk != "[DONE]":
+                        chunk_dict = orjson.loads(chunk)
+                        delta = chunk_dict["choices"][0]["delta"].get("content")
+                        if delta:
+                            content.append(delta)
+                            yield {"delta": delta, "response": "".join(content)}
+
+        # streaming does not currently return token counts
+        assistant_message = ChatMessage(
+            role="assistant",
+            content="".join(content),
+        )
+
+        self.add_messages(user_message, assistant_message, save_messages)
+
+        return assistant_message
