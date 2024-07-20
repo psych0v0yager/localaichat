@@ -1,10 +1,10 @@
 # localaichat
 
 ```py3
-from simpleaichat import AIChat
+from localaichat import AIChat
 
 ai = AIChat(client_type="vLLM", model="Meta-Llama-3-8B-Instruct", system="Write a fancy GitHub README based on the user-provided project name.")
-ai("simpleaichat")
+ai("localaichat")
 ```
 
 Credits to Max Woolf ([@minimaxir](https://minimaxir.com)) for the original simpleaichat found here [simpleaichat](https://github.com/minimaxir/simpleaichat)
@@ -31,11 +31,10 @@ Here's some fun, hackable examples on how simpleaichat works:
 
 ## Installation
 
-(I'll need to update this)
-simpleaichat can be installed [from PyPI](https://pypi.org/project/simpleaichat/):
+simpleaichat can be installed [from PyPI](https://pypi.org/project/localaichat/):
 
 ```sh
-pip3 install simpleaichat
+pip3 install localaichat
 ```
 
 ## Quick, Fun Demo
@@ -51,7 +50,7 @@ python -m vllm.entrypoints.openai.api_server --model NousResearch/Meta-Llama-3-8
 Step 2: Begin your chat with one line of code:
 
 ```py3
-from simpleaichat import AIChat
+from localaichat import AIChat
 
 AIChat(client_type="vLLM", model="Meta-Llama-3-8B-Instruct")
 ```
@@ -59,7 +58,7 @@ AIChat(client_type="vLLM", model="Meta-Llama-3-8B-Instruct")
 For OpenAI you will need to get an OpenAI API key, and then with one line of code:
 
 ```py3
-from simpleaichat import AIChat
+from localaichat import AIChat
 
 AIChat(api_key="sk-...")
 ```
