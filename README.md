@@ -31,7 +31,7 @@ Here's some fun, hackable examples on how simpleaichat works:
 
 ## Installation
 
-simpleaichat can be installed [from PyPI](https://pypi.org/project/localaichat/):
+localaichat can be installed [from PyPI](https://pypi.org/project/localaichat/):
 
 ```sh
 pip3 install localaichat
@@ -250,7 +250,7 @@ Parsing the model output to invoke tools typically requires a number of shennani
 You will need to specify functions with docstrings which provide hints for the AI to select them:
 
 ```py3
-from simpleaichat.utils import wikipedia_search, wikipedia_search_lookup
+from localaichat.utils import wikipedia_search, wikipedia_search_lookup
 
 # This uses the Wikipedia Search API.
 # Results from it are nondeterministic, your mileage will vary.
