@@ -56,7 +56,7 @@ from simpleaichat import AIChat
 AIChat(client_type="vLLM", model="Meta-Llama-3-8B-Instruct")
 ```
 
-For OpneAI you will need to get an OpenAI API key, and then with one line of code:
+For OpenAI you will need to get an OpenAI API key, and then with one line of code:
 
 ```py3
 from simpleaichat import AIChat
