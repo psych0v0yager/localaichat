@@ -72,3 +72,51 @@ class vLLMSession(ChatSession):
         if output_schema:
             schemas["output"] = output_schema.schema()
         return schemas
+    
+
+
+    def gen(
+        self,
+        prompt: str,
+        client: Union[Client, AsyncClient],
+        system: str = None,
+        save_messages: bool = None,
+        params: Dict[str, Any] = None,
+        input_schema: Any = None,
+        output_schema: Any = None,
+    ):
+        headers, data, user_message = self.prepare_request(
+            prompt, system, params, False, input_schema, output_schema
+        )
+
+        r = client.post(
+            str(self.api_url),
+            json=data,
+            headers=headers,
+            timeout=None,
+        )
+        r = r.json()
+
+        try:
+            if not output_schema:
+                content = r["choices"][0]["message"]["content"]
+                assistant_message = ChatMessage(
+                    role=r["choices"][0]["message"]["role"],
+                    content=content,
+                    finish_reason=r["choices"][0]["finish_reason"],
+                    prompt_length=r["usage"]["prompt_tokens"],
+                    completion_length=r["usage"]["completion_tokens"],
+                    total_length=r["usage"]["total_tokens"],
+                )
+                self.add_messages(user_message, assistant_message, save_messages)
+            else:
+                content = r["choices"][0]["message"]["content"]
+                content = orjson.loads(content)
+
+            self.total_prompt_length += r["usage"]["prompt_tokens"]
+            self.total_completion_length += r["usage"]["completion_tokens"]
+            self.total_length += r["usage"]["total_tokens"]
+        except KeyError:
+            raise KeyError(f"No AI generation: {r}")
+
+        return content
