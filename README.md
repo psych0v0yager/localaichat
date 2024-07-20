@@ -1,9 +1,9 @@
-# simpleaichat
+# simpleaichat v2
 
 ```py3
 from simpleaichat import AIChat
 
-ai = AIChat(system="Write a fancy GitHub README based on the user-provided project name.")
+ai = AIChat(client_type="vLLM", model="Meta-Llama-3-8B-Instruct", system="Write a fancy GitHub README based on the user-provided project name.")
 ai("simpleaichat")
 ```
 
