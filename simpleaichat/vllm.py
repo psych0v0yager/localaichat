@@ -7,11 +7,10 @@ from pydantic import HttpUrl
 from .models import ChatMessage, ChatSession
 from .utils import remove_a_key
 
-tool_prompt = """From the list of tools below:
-- Reply ONLY with the number of the tool appropriate in response to the user's last message.
-- If no tool is appropriate, ONLY reply with \"0\".
+tool_prompt = """From the list of tools below, reply ONLY with the name of the tool appropriate in response to the user's last message. If no tool is appropriate, reply with "no-function".
 
 {tools}"""
+
 
 
 class vLLMSession(ChatSession):
@@ -160,3 +159,77 @@ class vLLMSession(ChatSession):
         self.add_messages(user_message, assistant_message, save_messages)
 
         return assistant_message
+
+    def gen_with_tools(
+        self,
+        prompt: str,
+        tools: List[Any],
+        client: Union[Client, AsyncClient],
+        system: str = None,
+        save_messages: bool = None,
+        params: Dict[str, Any] = None,
+    ) -> Dict[str, Any]:
+        
+        # Call 1: Select the correct tool
+        # vLLM supports guided choice, we can now directly pass in tool names
+        tool_names = [tool.__name__ for tool in tools]
+        tool_names.append("no-function")
+
+        # Add the list of tool names to the tool prompt
+        tools_list = "\n".join(tool_names)
+        tool_prompt_format = tool_prompt.format(tools=tools_list)
+
+        # Use guided_choice to let the model select a tool
+        tool_choice = self.gen(
+            prompt,
+            client=client,
+            system=tool_prompt_format,
+            save_messages=False,
+            params={
+                "temperature": 0.0,
+                "guided_choice": tool_names,
+            },
+        )
+
+        # If no tool is selected, do a standard generation instead.
+        if tool_choice == "no-function":
+            return {
+                "response": self.gen(
+                    prompt,
+                    client=client,
+                    system=system,
+                    save_messages=save_messages,
+                    params=params,
+                ),
+                "tool": None,
+            }
+        
+        # Execute the selected tool
+        selected_tool = next(tool for tool in tools if tool.__name__ == tool_choice)
+        context_dict = selected_tool(prompt)
+        if isinstance(context_dict, str):
+            context_dict = {"context": context_dict}
+
+        context_dict["tool"] = selected_tool.__name__
+
+        # Call 2: Incorporate the tool response into the model for a new generation
+        # This creates a temporary vLLMSession
+        new_system = f"{system or self.system}\n\nYou MUST use information from the context in your response."
+        new_prompt = f"Context: {context_dict['context']}\n\nUser: {prompt}"
+
+        context_dict["response"] = self.gen(
+            new_prompt,
+            client=client,
+            system=new_system,
+            save_messages=False,
+            params=params,
+        )
+
+        # Manually append the nonmodified user message + normal AI response
+        user_message = ChatMessage(role="user", content=prompt)
+        assistant_message = ChatMessage(
+            role="assistant", content=context_dict["response"]
+        )
+        self.add_messages(user_message, assistant_message, save_messages)
+
+        return context_dict
