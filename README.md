@@ -1,4 +1,4 @@
-# simpleaichat v2
+# localaichat
 
 ```py3
 from simpleaichat import AIChat
@@ -10,7 +10,7 @@ ai("simpleaichat")
 Credits to Max Woolf ([@minimaxir](https://minimaxir.com)) for the original simpleaichat found here [simpleaichat](https://github.com/minimaxir/simpleaichat)
 
 
-Like the original simpleaichat, simpleaichat v2 is designed to work with chat models with minimal abstractions. The difference with this Agent Framework is local models are priotitized as first class citizens. All features and internal prompts within this repo are designed to work primarily with local models hosted on the blazing fast vLLM backend. 
+Like the original simpleaichat, localaichat is designed to work with chat models with minimal abstractions. The difference with this Agent Framework is local models are priotitized as first class citizens. All features and internal prompts within this repo are designed to work primarily with local models hosted on the blazing fast vLLM backend. 
 
 - The ability to use local models via the vLLM backend
 - The ability to switch between vLLM and OpenAI to leverage the advantages of closed and open models
