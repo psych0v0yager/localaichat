@@ -14,7 +14,7 @@ tool_prompt = """From the list of tools below:
 {tools}"""
 
 
-class LlamaSession(ChatSession):
+class LlamaCppSession(ChatSession):
     api_url: HttpUrl = "http://localhost:8080/v1/chat/completions"
     input_fields: Set[str] = {"role", "content", "name"}
     system: str = "You are a helpful assistant."
