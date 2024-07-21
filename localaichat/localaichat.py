@@ -14,6 +14,7 @@ from rich.console import Console
 
 from .chatgpt import ChatGPTSession
 from .vllm import vLLMSession
+from .llamacpp import LlamaCppSession
 from .models import ChatMessage, ChatSession
 from .utils import wikipedia_search_lookup
 
@@ -69,8 +70,13 @@ class AIChat(BaseModel):
                 character = "LLM" if not character else character
                 new_default_session.title = character
                 self.interactive_console(character=character, prime=prime)
+        elif self.client_type == "Llamacpp":
+            if not system and console:
+                character = "LLM" if not character else character
+                new_default_session.title = character
+                self.interactive_console(character=character, prime=prime)
         else:
-            raise ValueError("Unsupported backend. Be sure to pass either 'OpenAI' or 'vLLM'")
+            raise ValueError("Unsupported backend. Be sure to pass either 'OpenAI', 'vLLM', or 'Llamacpp'")
 
     def new_session(
         self,
@@ -100,8 +106,18 @@ class AIChat(BaseModel):
                 },
                 **kwargs,
             )
+        elif self.client_type == "Llamacpp":
+            llamacpp_api_key = kwargs.get("api_key") or os.getenv("LLAMACPP_API_KEY")
+            assert llamacpp_api_key, f"An API key for {kwargs['model'] } was not defined."
+            sess = LlamaCppSession(
+                auth={
+                    "api_key": llamacpp_api_key,
+                },
+                **kwargs,
+            )
+
         else:
-            raise ValueError("Unsupported backend. Be sure to pass either 'OpenAI' or 'vLLM'")
+            raise ValueError("Unsupported backend. Be sure to pass either 'OpenAI', 'vLLM', or 'Llamacpp'")
 
         if return_session:
             return sess
