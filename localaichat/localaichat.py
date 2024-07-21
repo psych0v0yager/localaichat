@@ -9,7 +9,7 @@ import dateutil
 import orjson
 from dotenv import load_dotenv
 from httpx import AsyncClient, Client
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from rich.console import Console
 
 from .chatgpt import ChatGPTSession
@@ -19,11 +19,11 @@ from .utils import wikipedia_search_lookup
 
 load_dotenv()
 
-
 class AIChat(BaseModel):
     client: Any
     default_session: Optional[ChatSession]
     sessions: Dict[Union[str, UUID], ChatSession] = {}
+    client_type: str = Field(default="OpenAI")
 
     def __init__(
         self,
@@ -37,11 +37,13 @@ class AIChat(BaseModel):
         console: bool = True,
         **kwargs,
     ):
-        
-        self.client_type = client_type
-
         client = Client(proxies=os.getenv("https_proxy"))
         system_format = self.build_system(character, character_command, system)
+
+        # Initialize the BaseModel with required fields
+        super().__init__(client=client, default_session=None, sessions={})
+
+        self.client_type = client_type
 
         sessions = {}
         new_default_session = None
@@ -53,9 +55,9 @@ class AIChat(BaseModel):
             new_default_session = new_session
             sessions = {new_session.id: new_session}
 
-        super().__init__(
-            client=client, default_session=new_default_session, sessions=sessions
-        )
+        self.client = client
+        self.default_session = new_default_session
+        self.sessions = sessions
 
         if self.client_type == "OpenAI":
             if not system and console:
@@ -69,7 +71,7 @@ class AIChat(BaseModel):
                 self.interactive_console(character=character, prime=prime)
         else:
             raise ValueError("Unsupported backend. Be sure to pass either 'OpenAI' or 'vLLM'")
-    
+
     def new_session(
         self,
         return_session: bool = False,
@@ -90,7 +92,12 @@ class AIChat(BaseModel):
             )
         # Build vLLM session
         elif self.client_type == "vLLM":
+            vllm_api_key = kwargs.get("api_key") or os.getenv("VLLM_API_KEY")
+            assert vllm_api_key, f"An API key for {kwargs['model'] } was not defined."
             sess = vLLMSession(
+                auth={
+                    "api_key": vllm_api_key,
+                },
                 **kwargs,
             )
         else:

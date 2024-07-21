@@ -14,7 +14,7 @@ tool_prompt = """From the list of tools below, reply ONLY with the name of the t
 
 
 class vLLMSession(ChatSession):
-    api_url: HttpUrl = "https://localhost:8000/v1/chat/completions" or "https://localhost:8080/v1/chat/completions"
+    api_url: HttpUrl = "http://localhost:8000/v1/chat/completions" or "http://localhost:8080/v1/chat/completions"
     input_fields: Set[str] = {"role", "content", "name"}
     system: str = "You are a helpful assistant."
     params: Dict[str, Any] = {"temperature": 0.3}
@@ -30,8 +30,7 @@ class vLLMSession(ChatSession):
     ):
         headers = {
             "Content-Type": "application/json",
-            # vLLM doesn't need an API Key
-            # "Authorization": f"Bearer {self.auth['api_key'].get_secret_value()}",
+            "Authorization": f"Bearer {self.auth['api_key'].get_secret_value()}",
         }
 
         system_message = ChatMessage(role="system", content=system or self.system)
@@ -52,8 +51,12 @@ class vLLMSession(ChatSession):
         
         # vLLM doesn't natively support function calling, but it does support guided json
         # We will use guided json as a stand in for function calling
-        if input_schema or output_schema:
-            gen_params["guided_json"] = self.schema_to_guided_json(input_schema, output_schema)
+        if input_schema:
+            gen_params["guided_json"] = input_schema.model_json_schema()
+
+        if output_schema:
+            gen_params["guided_json"] = output_schema.model_json_schema()
+
 
         data = {
             "model": self.model,
@@ -63,14 +66,6 @@ class vLLMSession(ChatSession):
         }
 
         return headers, data, user_message
-
-    def schema_to_guided_json(self, input_schema, output_schema):
-        schemas = {}
-        if input_schema:
-            schemas["input"] = input_schema.schema()
-        if output_schema:
-            schemas["output"] = output_schema.schema()
-        return schemas
     
     def gen(
         self,
@@ -320,7 +315,7 @@ class vLLMSession(ChatSession):
 
         self.add_messages(user_message, assistant_message, save_messages)
 
-        return assistant_message
+
 
     async def gen_with_tools_async(
         self,
