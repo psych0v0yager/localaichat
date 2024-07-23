@@ -355,6 +355,7 @@ ai("Thanks for your help!", tools=[search, lookup])
 
 ## Roadmap
 - Add a monitoring system to keep track of AIChat() threads that are currently running. During testing I noticed I would OOM my vLLM server when I ran too many chats. I will create a monitoring system and add safeguards to ensure it is impossible to OOM the vLLM and llamacpp server
+- Create several versions of this repo ranging from barebones to batteries included. This departs from the original vision, yet allowing multiple versions gives each user the right localaichat for their use case. Will add optional dependencies such as `pip install localaichat[llamacpp]`,`pip install localaichat[vllm]`, `pip install localaichat[toolpack]`, `pip install localaichat[full]`
 - Complete examples
 - Reduce verbosity. I am looking at config based systems so the user does not need to pass `client_type` and `model` every single time
 - Remove hidden prompts from gen_with_tools(). Allow user to specify them in a config file
