@@ -82,7 +82,7 @@ class AIChat(BaseModel):
         self,
         return_session: bool = False,
         **kwargs,
-    ) -> Optional[ChatGPTSession]:
+    ) -> Optional[ChatSession]:
         
         # Build openai session
         if self.client_type == "OpenAI":

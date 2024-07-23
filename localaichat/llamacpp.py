@@ -15,7 +15,7 @@ tool_prompt = """From the list of tools below:
 
 
 class LlamaCppSession(ChatSession):
-    api_url: HttpUrl = "http://localhost:8080/v1/chat/completions"
+    api_url: HttpUrl = "http://localhost:8000/v1/chat/completions" or "http://localhost:8080/v1/chat/completions"
     input_fields: Set[str] = {"role", "content", "name"}
     system: str = "You are a helpful assistant."
     params: Dict[str, Any] = {"temperature": 0.3}
@@ -49,11 +49,15 @@ class LlamaCppSession(ChatSession):
         gen_params = params or self.params
 
         if input_schema or output_schema:
-            gen_params["json_schema"] = {}
+            functions = []
             if input_schema:
-                gen_params["json_schema"]["input_schema"] = input_schema.model_json_schema()
+                input_function = self.schema_to_function(input_schema)
+                functions.append(input_function)
             if output_schema:
-                gen_params["json_schema"]["output_schema"] = output_schema.model_json_schema()
+                output_function = self.schema_to_function(output_schema)
+                functions.append(output_function) if output_function not in functions else None
+                gen_params["function_call"] = {"name": output_schema.__name__}
+            gen_params["functions"] = functions
 
         data = {
             "model": self.model,
@@ -63,6 +67,20 @@ class LlamaCppSession(ChatSession):
         }
 
         return headers, data, user_message
+
+    def schema_to_function(self, schema: Any):
+        assert schema.__doc__, f"{schema.__name__} is missing a docstring."
+        assert (
+            "title" not in schema.model_fields.keys()
+        ), "`title` is a reserved keyword and cannot be used as a field name."
+        schema_dict = schema.model_json_schema()
+        remove_a_key(schema_dict, "title")
+
+        return {
+            "name": schema.__name__,
+            "description": schema.__doc__,
+            "parameters": schema_dict,
+        }
 
     def gen(
         self,
@@ -99,7 +117,7 @@ class LlamaCppSession(ChatSession):
                 )
                 self.add_messages(user_message, assistant_message, save_messages)
             else:
-                content = r["choices"][0]["message"]["content"]
+                content = r["choices"][0]["message"]["function_call"]["arguments"]
                 content = orjson.loads(content)
 
             self.total_prompt_length += r["usage"]["prompt_tokens"]
@@ -118,10 +136,9 @@ class LlamaCppSession(ChatSession):
         save_messages: bool = None,
         params: Dict[str, Any] = None,
         input_schema: Any = None,
-        output_schema: Any = None,
     ):
         headers, data, user_message = self.prepare_request(
-            prompt, system, params, True, input_schema, output_schema
+            prompt, system, params, True, input_schema
         )
 
         with client.stream(
@@ -166,19 +183,24 @@ class LlamaCppSession(ChatSession):
         logit_bias_weight = 100
         logit_bias = {str(k): logit_bias_weight for k in range(15, 15 + len(tools) + 1)}
 
-        tool_idx = int(
-            self.gen(
-                prompt,
-                client=client,
-                system=tool_prompt_format,
-                save_messages=False,
-                params={
-                    "temperature": 0.0,
-                    "max_tokens": 1,
-                    "logit_bias": logit_bias,
-                },
-            )
+        response = self.gen(
+            prompt,
+            client=client,
+            system=tool_prompt_format,
+            save_messages=False,
+            params={
+                "temperature": 0.0,
+                "max_tokens": 1,
+                # "logit_bias": logit_bias,
+            },
         )
+
+        print(f"Response from model: {response}")  # Debug print
+
+        try:
+            tool_idx = int(response.strip())
+        except ValueError:
+            raise ValueError(f"Response from model is not a valid integer: {response}")
 
         if tool_idx == 0:
             return {
@@ -253,7 +275,7 @@ class LlamaCppSession(ChatSession):
                 )
                 self.add_messages(user_message, assistant_message, save_messages)
             else:
-                content = r["choices"][0]["message"]["content"]
+                content = r["choices"][0]["message"]["function_call"]["arguments"]
                 content = orjson.loads(content)
 
             self.total_prompt_length += r["usage"]["prompt_tokens"]
@@ -272,10 +294,9 @@ class LlamaCppSession(ChatSession):
         save_messages: bool = None,
         params: Dict[str, Any] = None,
         input_schema: Any = None,
-        output_schema: Any = None,
     ):
         headers, data, user_message = self.prepare_request(
-            prompt, system, params, True, input_schema, output_schema
+            prompt, system, params, True, input_schema
         )
 
         async with client.stream(
@@ -318,19 +339,24 @@ class LlamaCppSession(ChatSession):
         logit_bias_weight = 100
         logit_bias = {str(k): logit_bias_weight for k in range(15, 15 + len(tools) + 1)}
 
-        tool_idx = int(
-            await self.gen_async(
-                prompt,
-                client=client,
-                system=tool_prompt_format,
-                save_messages=False,
-                params={
-                    "temperature": 0.0,
-                    "max_tokens": 1,
-                    "logit_bias": logit_bias,
-                },
-            )
+        response = await self.gen_async(
+            prompt,
+            client=client,
+            system=tool_prompt_format,
+            save_messages=False,
+            params={
+                "temperature": 0.0,
+                "max_tokens": 1,
+                # "logit_bias": logit_bias,
+            },
         )
+
+        print(f"Response from model: {response}")  # Debug print
+
+        try:
+            tool_idx = int(response.strip())
+        except ValueError:
+            raise ValueError(f"Response from model is not a valid integer: {response}")
 
         if tool_idx == 0:
             return {
