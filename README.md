@@ -11,7 +11,7 @@ Credits to Max Woolf ([@minimaxir](https://minimaxir.com)) for the original simp
 
 ## Features
 
-Like the original simpleaichat, localaichat is designed to work with chat models with minimal abstractions. The difference with this Agent Framework is local models are priotitized as first class citizens. All features and internal prompts within this repo are designed to work primarily with local models hosted on the blazing fast vLLM backend as well as llamacpp for low VRAM users 
+Like the original simpleaichat, localaichat is designed to work with chat models with minimal abstractions. I enjoyed the flexibility and simplicity of simpleaichat and used it in all of my agentic workflows. I decided to open source my personal fork of simpleaichat that features a number of improvements and additional features. The difference with this version is local models are priotitized as first class citizens. All features and internal prompts within this repo are designed to work primarily with local models hosted on the blazing fast vLLM backend as well as llamacpp for low VRAM users 
 
 - The ability to switch between vLLM, llamacpp, and OpenAI to leverage the advantages of closed and open models
 - Create and run chats with only a few lines of code!
