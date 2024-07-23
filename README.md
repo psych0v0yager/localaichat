@@ -10,24 +10,38 @@ ai("localaichat")
 Credits to Max Woolf ([@minimaxir](https://minimaxir.com)) for the original simpleaichat found here [simpleaichat](https://github.com/minimaxir/simpleaichat)
 
 
-Like the original simpleaichat, localaichat is designed to work with chat models with minimal abstractions. The difference with this Agent Framework is local models are priotitized as first class citizens. All features and internal prompts within this repo are designed to work primarily with local models hosted on the blazing fast vLLM backend. 
+Like the original simpleaichat, localaichat is designed to work with chat models with minimal abstractions. The difference with this Agent Framework is local models are priotitized as first class citizens. All features and internal prompts within this repo are designed to work primarily with local models hosted on the blazing fast vLLM backend as well as llamacpp for low VRAM users 
 
-- The ability to use local models via the vLLM backend
-- The ability to switch between vLLM and OpenAI to leverage the advantages of closed and open models
+- The ability to switch between vLLM, llamacpp, and OpenAI to leverage the advantages of closed and open models
 - Create and run chats with only a few lines of code!
 - Optimized workflows which minimize the amount of tokens used, reducing costs and latency.
 - Run multiple independent chats at once.
 - Minimal codebase: no code dives to figure out what's going on under the hood needed!
 - Chat streaming responses and the ability to use tools.
 - Async support, including for streaming and tools.
-- Ability to create more complex yet clear workflows if needed, such as Agents. (Demo soon!)
+- Ability to create more complex and clear workflows.
 
-Here's some fun, hackable examples on how simpleaichat works:
+Local Models have improved significantly in the past year. In many cases they are now cheaper and more capable than GPT 3.5 Turbo and with the latest Llama 3.1 release, the 70B model outperforms GPT-4 on most benchmarks. That being said, there are some important caveats to be aware of when using local models over closed source models.
 
-- Creating a [Python coding assistant](examples/notebooks/simpleaichat_coding.ipynb) without any unnecessary accompanying output, allowing 5x faster generation at 1/3rd the cost. ([Colab](https://colab.research.google.com/github/minimaxir/simpleaichat/blob/main/examples/notebooks/simpleaichat_coding.ipynb))
-- Allowing simpleaichat to [provide inline tips](examples/notebooks/chatgpt_inline_tips.ipynb) following ChatGPT usage guidelines. ([Colab](https://colab.research.google.com/github/minimaxir/simpleaichat/blob/main/examples/notebooks/chatgpt_inline_tips.ipynb))
-- Async interface for [conducting many chats](examples/notebooks/simpleaichat_async.ipynb) in the time it takes to receive one AI message. ([Colab](https://colab.research.google.com/github/minimaxir/simpleaichat/blob/main/examples/notebooks/simpleaichat_async.ipynb))
-- Create your own Tabletop RPG (TTRPG) setting and campaign by using [advanced structured data models](examples/notebooks/schema_ttrpg.ipynb). ([Colab](https://colab.research.google.com/github/minimaxir/simpleaichat/blob/main/examples/notebooks/schema_ttrpg.ipynb))
+1. Unique cognitive footprint: There is no unified definition of intelligence, benchmarks are our best way to measure model prowess, but they are still a limited measure. In addition, models are trained on different sets of data and this develop different "personalities" from one another. Using less anthropomorphic language, prompts that work well for the GPT series may not work well for the Llama series or the Claude series; and the reverse is true as well. This is a major issue with most agent frameworks, as they use system prompts catered for the GPT series to set up their workflow. Furthermore, these prompts are hidden under layers of abstraction and can be difficult to identify. As a result, even though the local models may be dumber than the closed models they are at an unfair disadvantage. Localaichat has no hidden system prompts in its code (it does for tool use, but that will be removed soon), and allows the user to input the right prompt for the right LLM.
+2. Structured Generation: Structured Generation is the key advantage local models have over their closed source counterparts. In a nutshell, structured generation works by restricting the number of possible logits an LLM can output. For example, in a multiple choice prompt you can specify a `guided_choice` in vLLM that restricts the output tokens to `["A", "B", "C", "D"]`. This means the model can only answer with the 4 tokens in the list, no other token can be generated. This eliminates excessive rambling and gives the user fail free workflows every time. `guided_json` can force syntactically correct json every time (and is what powers the tool use ability in the vLLM integration), `guided_choice` can be used to set up precise routing schemes, `guided_regex` can guarantee a consistent format every time, and last but not least `guided_grammar` can force the entire output to follow any artbitrary format defined by the context free grammar. Our REACT example uses a custom REACT prompt and a custom REACT grammar to force consisted REACT outputs on any model, even if it wasn't fine tuned to do so. This is all due to the excellent `guidance` library that is natively incorporated into vLLM.
+
+
+Examples can be found under (examples/notebooks). The simplicity of localaichat makes it easy to construct exotic agent architectures. Minimal abstractions and an easily readable codebase allow the user to have the utmost confidence in their work. The following examples are provided.
+- Tool Use Tutorial [Tool Use](examples/notebooks/tool_use_tutorial.ipynb)
+- Simple Agent [Agent](examples/notebooks/simple_agent.ipynb)
+- REACT Agent [REACT-Agent](examples/notebooks/react_agent.ipynb) 
+- Mixture of Agents (MoA) single layer [MoA-Single](examples/notebooks/moa_single.ipynb)
+- Mixture of Agents (MoA) multi layer [MoA-Multi](examples/notebooks/moa_multi.ipynb)
+- Agentic Monte Carlo Tree Search [Agentic-MCTS](examples/notebooks/agentic_mcts.ipynb) Note: There have been no papers or implementations of this architecture that I am aware of. I made it because it sounded cool and I wanted to showcase exotic agent configurations that are capable with the framework
+
+
+Legacy examples from simpleaichat can be found under (examples/notebooks). The OpenAi notebooks were ported into llama.cpp and vllm. The legacy notebooks will be updated shortly with clearer model names. Testing was done using Senku 70B and llama3 70B:
+
+- Creating a [Python coding assistant](examples/notebooks/simpleaichat_coding.ipynb) without any unnecessary accompanying output, allowing 5x faster generation at 1/3rd the cost. 
+- Allowing simpleaichat to [provide inline tips](examples/notebooks/chatgpt_inline_tips.ipynb) following ChatGPT usage guidelines. 
+- Async interface for [conducting many chats](examples/notebooks/simpleaichat_async.ipynb) in the time it takes to receive one AI message. 
+- Create your own Tabletop RPG (TTRPG) setting and campaign by using [advanced structured data models](examples/notebooks/schema_ttrpg.ipynb). 
 
 ## Installation
 
@@ -37,9 +51,11 @@ localaichat can be installed [from PyPI](https://pypi.org/project/localaichat/):
 pip3 install localaichat
 ```
 
-## Quick, Fun Demo
+## Setup
 
-For local models you can get started in 2 steps
+To avoid scope creep. This repo assumes you have a separate environment for both llamacpp and vllm. In the future these will be added as optional depencencies to simplify installation.
+
+### vLLM
 
 Step 1: Start your vLLM server in your vLLM environment
 
@@ -47,13 +63,32 @@ Step 1: Start your vLLM server in your vLLM environment
 python -m vllm.entrypoints.openai.api_server --model NousResearch/Meta-Llama-3-8B-Instruct --dtype auto --api-key token-abc123
 ```
 
-Step 2: Begin your chat with one line of code:
+Step 2: Begin your chat:
 
 ```py3
 from localaichat import AIChat
 
-AIChat(client_type="vLLM", model="Meta-Llama-3-8B-Instruct")
+AIChat(client_type="vLLM", model="Meta-Llama-3-8B-Instruct", api_key="token-abc123")
 ```
+
+### Llama-cpp
+
+Step 1: Start your llamacpp server in your llamacpp environment
+
+```
+python3 -m llama_cpp.server --model NousResearch/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf --n_gpu_layers -1 --chat_format llama3 --api_key "token-abc123"
+
+```
+
+Step 2: Begin your chat:
+
+```py3
+from localaichat import AIChat
+
+AIChat(client_type="Llamacpp", model="Meta-Llama-3-8B-Instruct-Q4_K_M.gguf", api_key="token-abc123")
+```
+
+### OpenAI
 
 For OpenAI you will need to get an OpenAI API key, and then with one line of code:
 
