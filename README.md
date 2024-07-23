@@ -354,11 +354,17 @@ ai("Thanks for your help!", tools=[search, lookup])
 - Outside of the explicit examples, none of this README uses AI-generated text. The introduction code example is just a joke, but it was too good of a real-world use case!
 
 ## Roadmap
-
-- PaLM Chat (Bard) and Anthropic Claude support
-- More fun/feature-filled CLI chat app based on Textual
-- Simple example of using simpleaichat in a webapp
-- Simple of example of using simpleaichat in a stateless manner (e.g. AWS Lambda functions)
+- Add a monitoring system to keep track of AIChat() threads that are currently running. During testing I noticed I would OOM my vLLM server when I ran too many chats. I will create a monitoring system and add safeguards to ensure it is impossible to OOM the vLLM and llamacpp server
+- Complete examples
+- Reduce verbosity. I am looking at config based systems so the user does not need to pass `client_type` and `model` every single time
+- Remove hidden prompts from gen_with_tools(). Allow user to specify them in a config file
+- Add more comments to the code base. It is simple as it is, but I intend this repository to act as a teaching tool as well. 
+- More exotic agent examples. Allow an AIChat() to spawn its own sub AIChats.
+- Complete the old simpleaichat roadmap listed below
+    - PaLM Chat (Bard) and Anthropic Claude support
+    - More fun/feature-filled CLI chat app based on Textual
+    - Simple example of using simpleaichat in a webapp
+    - Simple of example of using simpleaichat in a stateless manner (e.g. AWS Lambda functions)
 
 ## Maintainer/Creator
 
