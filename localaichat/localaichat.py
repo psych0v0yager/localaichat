@@ -22,7 +22,7 @@ import chromadb
 
 load_dotenv()
 
-class Entity(BaseModel):
+class AIChat(BaseModel):
     client: Any
     default_session: Optional[ChatSession]
     sessions: Dict[Union[str, UUID], ChatSession] = {}
@@ -88,7 +88,7 @@ class Entity(BaseModel):
         if self.use_long_term_memory:
             # self.long_term_memory = chromadb.PersistentClient(path="longtermmemory")
             self.long_term_memory = chromadb.PersistentClient(path="long/term/memory")
-            # self.long_term_memory = self.long_term_memory_client.get_or_create_collection("EntityMemory")
+            # self.long_term_memory = self.long_term_memory_client.get_or_create_collection("AIChatMemory")
 
     def new_session(
         self,
@@ -168,7 +168,7 @@ class Entity(BaseModel):
 
     def add_to_long_term_memory(self, text: str, metadata: Dict[str, Any] = None):
         if not self.use_long_term_memory:
-            raise ValueError("Long-term memory is not enabled for this Entity.")
+            raise ValueError("Long-term memory is not enabled for this AIChat.")
         
         collection = self.long_term_memory
         collection.add(
@@ -179,9 +179,9 @@ class Entity(BaseModel):
 
     def recall_from_long_term_memory(self, query: str, n_results: int = 5) -> List[Dict]:
         if not self.use_long_term_memory:
-            raise ValueError("Long-term memory is not enabled for this Entity.")
+            raise ValueError("Long-term memory is not enabled for this AIChat.")
         
-        collection = self.long_term_memory.get_or_create_collection("EntityMemory")
+        collection = self.long_term_memory.get_or_create_collection("AIChatMemory")
         results = collection.query(query_texts=[query], n_results=n_results)
         
         return [{"text": doc, "metadata": meta} for doc, meta in zip(results['documents'][0], results['metadatas'][0])]
@@ -423,7 +423,7 @@ class Entity(BaseModel):
         return self.total_length(id)
 
 
-class AsyncEntity(Entity):
+class AsyncAIChat(AIChat):
     async def __call__(
         self,
         prompt: str,
