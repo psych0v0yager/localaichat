@@ -5,7 +5,7 @@ from getpass import getpass
 import fire
 from dotenv import load_dotenv
 
-from .localaichat import AIChat
+from .localaichat import Entity
 
 load_dotenv()
 
@@ -24,7 +24,7 @@ def interactive_chat():
     if not gpt_api_key:
         gpt_api_key = getpass("Input your OpenAI key here: ")
     assert gpt_api_key, "An API key was not defined."
-    _ = AIChat(ARGS.character, ARGS.character_command, ARGS.prime)
+    _ = Entity(ARGS.character, ARGS.character_command, ARGS.prime)
 
 
 if __name__ == "__main__":

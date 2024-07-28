@@ -1,1 +1,1 @@
-from .localaichat import AIChat, AsyncAIChat
+from .localaichat import Entity, AsyncEntity

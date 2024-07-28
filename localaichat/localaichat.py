@@ -18,13 +18,17 @@ from .llamacpp import LlamaCppSession
 from .models import ChatMessage, ChatSession
 from .utils import wikipedia_search_lookup
 
+import chromadb
+
 load_dotenv()
 
-class AIChat(BaseModel):
+class Entity(BaseModel):
     client: Any
     default_session: Optional[ChatSession]
     sessions: Dict[Union[str, UUID], ChatSession] = {}
     client_type: str = Field(default="OpenAI")
+    use_long_term_memory: bool = Field(default=False)
+    long_term_memory: Optional[Client] = None
 
     def __init__(
         self,
@@ -36,6 +40,7 @@ class AIChat(BaseModel):
         prime: bool = True,
         default_session: bool = True,
         console: bool = True,
+        use_long_term_memory: bool = False,
         **kwargs,
     ):
         client = Client(proxies=os.getenv("https_proxy"))
@@ -77,6 +82,13 @@ class AIChat(BaseModel):
                 self.interactive_console(character=character, prime=prime)
         else:
             raise ValueError("Unsupported backend. Be sure to pass either 'OpenAI', 'vLLM', or 'Llamacpp'")
+        
+        # Long term memory stuff
+        self.use_long_term_memory = use_long_term_memory
+        if self.use_long_term_memory:
+            # self.long_term_memory = chromadb.PersistentClient(path="longtermmemory")
+            self.long_term_memory = chromadb.PersistentClient(path="long/term/memory")
+            # self.long_term_memory = self.long_term_memory_client.get_or_create_collection("EntityMemory")
 
     def new_session(
         self,
@@ -153,6 +165,42 @@ class AIChat(BaseModel):
             yield sess
         finally:
             self.delete_session(sess.id)
+
+    def add_to_long_term_memory(self, text: str, metadata: Dict[str, Any] = None):
+        if not self.use_long_term_memory:
+            raise ValueError("Long-term memory is not enabled for this Entity.")
+        
+        collection = self.long_term_memory
+        collection.add(
+            documents=[text],
+            metadatas=[metadata] if metadata else None,
+            ids=[str(uuid4())]
+        )
+
+    def recall_from_long_term_memory(self, query: str, n_results: int = 5) -> List[Dict]:
+        if not self.use_long_term_memory:
+            raise ValueError("Long-term memory is not enabled for this Entity.")
+        
+        collection = self.long_term_memory.get_or_create_collection("EntityMemory")
+        results = collection.query(query_texts=[query], n_results=n_results)
+        
+        return [{"text": doc, "metadata": meta} for doc, meta in zip(results['documents'][0], results['metadatas'][0])]
+    
+    def save_session_to_long_term_memory(self, session_id: Union[str, UUID] = None):
+        sess = self.get_session(session_id)
+        session_content = "\n".join([f"{msg.role}: {msg.content}" for msg in sess.messages])
+        metadata = {
+            "session_id": str(sess.id),
+            "created_at": sess.created_at.isoformat(),
+            "model": sess.model,
+            "title": sess.title
+        }
+        self.add_to_long_term_memory(session_content, metadata)
+
+    def load_relevant_memories(self, query: str, n_results: int = 5) -> str:
+        memories = self.recall_from_long_term_memory(query, n_results)
+        return "\n\n".join([mem["text"] for mem in memories])
+
 
     def __call__(
         self,
@@ -277,43 +325,47 @@ class AIChat(BaseModel):
         id: Union[str, UUID] = None,
         format: str = "csv",
         minify: bool = False,
+        use_long_term_memory: bool = False,
     ):
-        sess = self.get_session(id)
-        sess_dict = sess.model_dump(
-            exclude={"auth", "api_url", "input_fields"},
-            exclude_none=True,
-        )
-        output_path = output_path or f"chat_session.{format}"
-        if format == "csv":
-            with open(output_path, "w", encoding="utf-8") as f:
-                fields = [
-                    "role",
-                    "content",
-                    "received_at",
-                    "prompt_length",
-                    "completion_length",
-                    "total_length",
-                    "finish_reason",
-                ]
-                w = csv.DictWriter(f, fieldnames=fields)
-                w.writeheader()
-                for message in sess_dict["messages"]:
-                    # datetime must be in common format to be loaded into spreadsheet
-                    # for human-readability, the timezone is set to local machine
-                    local_datetime = message["received_at"].astimezone()
-                    message["received_at"] = local_datetime.strftime(
-                        "%Y-%m-%d %H:%M:%S"
+        if use_long_term_memory and self.use_long_term_memory:
+            self.save_session_to_long_term_memory(id)
+        else:
+            sess = self.get_session(id)
+            sess_dict = sess.model_dump(
+                exclude={"auth", "api_url", "input_fields"},
+                exclude_none=True,
+            )
+            output_path = output_path or f"chat_session.{format}"
+            if format == "csv":
+                with open(output_path, "w", encoding="utf-8") as f:
+                    fields = [
+                        "role",
+                        "content",
+                        "received_at",
+                        "prompt_length",
+                        "completion_length",
+                        "total_length",
+                        "finish_reason",
+                    ]
+                    w = csv.DictWriter(f, fieldnames=fields)
+                    w.writeheader()
+                    for message in sess_dict["messages"]:
+                        # datetime must be in common format to be loaded into spreadsheet
+                        # for human-readability, the timezone is set to local machine
+                        local_datetime = message["received_at"].astimezone()
+                        message["received_at"] = local_datetime.strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        )
+                        w.writerow(message)
+            elif format == "json":
+                with open(output_path, "wb") as f:
+                    f.write(
+                        orjson.dumps(
+                            sess_dict, option=orjson.OPT_INDENT_2 if not minify else None
+                        )
                     )
-                    w.writerow(message)
-        elif format == "json":
-            with open(output_path, "wb") as f:
-                f.write(
-                    orjson.dumps(
-                        sess_dict, option=orjson.OPT_INDENT_2 if not minify else None
-                    )
-                )
 
-    def load_session(self, input_path: str, id: Union[str, UUID] = uuid4(), **kwargs):
+    def load_session(self, input_path: str, id: Union[str, UUID] = uuid4(), **kwargs):       
         assert input_path.endswith(".csv") or input_path.endswith(
             ".json"
         ), "Only CSV and JSON imports are accepted."
@@ -344,6 +396,9 @@ class AIChat(BaseModel):
             for arg in kwargs:
                 sess_dict[arg] = kwargs[arg]
             self.new_session(**sess_dict)
+        
+        if self.use_long_term_memory:
+            self.save_session_to_long_term_memory(id)
 
     # Tabulators for returning total token counts
     def message_totals(self, attr: str, id: Union[str, UUID] = None) -> int:
@@ -368,7 +423,7 @@ class AIChat(BaseModel):
         return self.total_length(id)
 
 
-class AsyncAIChat(AIChat):
+class AsyncEntity(Entity):
     async def __call__(
         self,
         prompt: str,
